@@ -1,5 +1,10 @@
-﻿@{
+﻿@model Owner;
+@{
     ViewData["Title"] = "Created";
 }
-
-<div>Directory successfully created!</div>
+<div>Directories successfully created:</div>
+@foreach (var path in Model.Paths)
+{
+    <div>@path</div>
+}
+<a asp-action="Create">Create New</a>

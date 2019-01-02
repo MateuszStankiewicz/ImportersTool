@@ -1,42 +1,60 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using WebAppForSolocoProject.Models;
+using System.Configuration;
+using WebAppForSolocoProject.Services;
+using WebAppForSolocoProject.ViewModels;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Extensions.Configuration;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.IO;
 
 namespace WebAppForSolocoProject.Controllers
 {
     public class HomeController : Controller
     {
+        private IOwnerData ownerData;
+        private IConfiguration configuration;
+
+        public HomeController(IOwnerData ownerData, IConfiguration configuration)
+        {
+            this.ownerData = ownerData;
+            this.configuration = configuration;
+        }
+
         [HttpGet]
         public IActionResult Create()
         {
-            return View();
+            var model = new HomeCreateVM();
+            model.ownersList = ownerData.GetAllOwners();
+            model.basePath = ConfigurationManager.AppSettings["basePath"].ToString();
+            return View(model);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Create(string path)
+        public IActionResult Create(HomeCreateVM model)
         {
-            try
+            Owner owner = ownerData.GetOwner(model.selectedOwner);
+            if (ModelState.IsValid)
             {
-                Directory.CreateDirectory(path);
+                try
+                {
+                    foreach (var path in owner.Paths)
+                    {
+                        Directory.CreateDirectory(model.basePath+"\\"+model.selectedOwner+"\\"+path);
+                    } 
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return BadRequest("You don't have access in selected directory. Please change your base path.");
+                }
             }
-            catch (Exception)
-            {
-                return View("Error");
-            }
-            return View("Created");
 
-        }
+            return View("Created", owner);
 
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
     }
 }

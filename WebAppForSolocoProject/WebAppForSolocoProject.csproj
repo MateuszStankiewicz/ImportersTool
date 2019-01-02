@@ -5,8 +5,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Data\AgaCode.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Data\AgaCode.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.1.2" PrivateAssets="All" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
   </ItemGroup>
 
   <ItemGroup>
