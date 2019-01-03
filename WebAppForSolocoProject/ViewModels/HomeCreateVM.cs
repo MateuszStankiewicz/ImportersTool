@@ -1,15 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc.Rendering;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using WebAppForSolocoProject.Models;
 
 namespace WebAppForSolocoProject.ViewModels
 {
     public class HomeCreateVM
     {
-        public string selectedOwner{ get; set;}
+        public string SelectedOwner{ get; set;}
 
         public IEnumerable<Owner> ownersList { get; set; } = new List<Owner>();
 

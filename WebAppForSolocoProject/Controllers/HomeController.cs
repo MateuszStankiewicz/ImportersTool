@@ -1,15 +1,12 @@
 ﻿using System;
-using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using WebAppForSolocoProject.Models;
 using System.Configuration;
 using WebAppForSolocoProject.Services;
 using WebAppForSolocoProject.ViewModels;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.Configuration;
-using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 
 namespace WebAppForSolocoProject.Controllers
 {
@@ -28,7 +25,7 @@ namespace WebAppForSolocoProject.Controllers
         public IActionResult Create()
         {
             var model = new HomeCreateVM();
-            model.ownersList = ownerData.GetAllOwners();
+            model.ownersList = ownerData.Owners;
             model.basePath = ConfigurationManager.AppSettings["basePath"].ToString();
             return View(model);
         }
@@ -37,24 +34,26 @@ namespace WebAppForSolocoProject.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult Create(HomeCreateVM model)
         {
-            Owner owner = ownerData.GetOwner(model.selectedOwner);
+            Owner owner = ownerData.Owners.FirstOrDefault(o => o.Name == model.SelectedOwner);
             if (ModelState.IsValid)
             {
                 try
                 {
+                    HomeCreatedVM createdVM = new HomeCreatedVM();
                     foreach (var path in owner.Paths)
                     {
-                        Directory.CreateDirectory(model.basePath+"\\"+model.selectedOwner+"\\"+path);
-                    } 
+                        string pathToCreate = model.basePath + "\\" + model.SelectedOwner + "\\" + path;
+                        Directory.CreateDirectory(pathToCreate);
+                        createdVM.Paths.Add(pathToCreate);
+                    }
+                    return View("Created", createdVM);
                 }
                 catch (UnauthorizedAccessException)
                 {
                     return BadRequest("You don't have access in selected directory. Please change your base path.");
                 }
             }
-
-            return View("Created", owner);
-
+            return BadRequest();
         }
     }
 }
