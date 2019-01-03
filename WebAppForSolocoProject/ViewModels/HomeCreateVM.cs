@@ -10,6 +10,9 @@ namespace WebAppForSolocoProject.ViewModels
 
         public IEnumerable<Owner> ownersList { get; set; } = new List<Owner>();
 
+        [Required]
         public string basePath { get; set; }
+
+        public List<string> CreatedPaths { get; set; } = new List<string>();
     }
 }

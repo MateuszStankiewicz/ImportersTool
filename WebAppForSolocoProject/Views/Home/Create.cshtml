@@ -9,4 +9,9 @@
     <input asp-for="basePath" />
     <select asp-for="SelectedOwner" asp-items="@(new SelectList(Model.ownersList,"Name","Name"))"></select> <br>
     <input type="submit" name="createBtn" value="Create" />
+    <span asp-validation-for="basePath"></span>
 </form>
+@foreach(var path in Model.CreatedPaths)
+{
+    <div>@path</div>
+}

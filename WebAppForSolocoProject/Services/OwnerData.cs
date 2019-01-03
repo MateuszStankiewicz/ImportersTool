@@ -100,5 +100,4 @@ namespace WebAppForSolocoProject.Services
             return pathToAdd.Substring(idx + 12);
         }
     }
-
 }

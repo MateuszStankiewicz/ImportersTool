@@ -34,26 +34,34 @@ namespace WebAppForSolocoProject.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult Create(HomeCreateVM model)
         {
+            model.ownersList = ownerData.Owners;
             Owner owner = ownerData.Owners.FirstOrDefault(o => o.Name == model.SelectedOwner);
             if (ModelState.IsValid)
             {
                 try
                 {
-                    HomeCreatedVM createdVM = new HomeCreatedVM();
                     foreach (var path in owner.Paths)
                     {
                         string pathToCreate = model.basePath + "\\" + model.SelectedOwner + "\\" + path;
-                        Directory.CreateDirectory(pathToCreate);
-                        createdVM.Paths.Add(pathToCreate);
+                        if(Directory.Exists(pathToCreate))
+                        {
+                            pathToCreate += " - directory already exist.";
+                        }
+                        else
+                        {
+                            Directory.CreateDirectory(pathToCreate);
+                            pathToCreate += " - directory succesfully created.";
+                        }
+                        model.CreatedPaths.Add(pathToCreate);
                     }
-                    return View("Created", createdVM);
+                    return View("Create", model);
                 }
                 catch (UnauthorizedAccessException)
                 {
                     return BadRequest("You don't have access in selected directory. Please change your base path.");
                 }
-            }
-            return BadRequest();
+            }    
+            return View("Create",model);
         }
     }
 }
