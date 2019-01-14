@@ -7,25 +7,26 @@ using WebAppForSolocoProject.ViewModels;
 using Microsoft.Extensions.Configuration;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace WebAppForSolocoProject.Controllers
 {
     public class HomeController : Controller
     {
-        private IOwnerData ownerData;
         private IConfiguration configuration;
+        private OwnerData ownerData;
 
-        public HomeController(IOwnerData ownerData, IConfiguration configuration)
+        public HomeController(IConfiguration configuration, OwnerData ownerData)
         {
-            this.ownerData = ownerData;
             this.configuration = configuration;
+            this.ownerData = ownerData;
         }
 
         [HttpGet]
         public IActionResult Create()
         {
             var model = new HomeCreateVM();
-            model.ownersList = ownerData.Owners;
+            model.ownersList = ownerData.GetOwners();
             model.basePath = ConfigurationManager.AppSettings["basePath"].ToString();
             return View(model);
         }
@@ -34,8 +35,8 @@ namespace WebAppForSolocoProject.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult Create(HomeCreateVM model)
         {
-            model.ownersList = ownerData.Owners;
-            Owner owner = ownerData.Owners.FirstOrDefault(o => o.Name == model.SelectedOwner);
+            model.ownersList = ownerData.GetOwners();
+            Owner owner = ownerData.GetOwners().FirstOrDefault(o => o.Name == model.SelectedOwner);
             if (ModelState.IsValid)
             {
                 try
