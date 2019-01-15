@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <Compile Remove="Data\AgaCode.cs" />
+    <Compile Remove="Services\IOwnerData.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using WebAppForSolocoProject.Models;
@@ -6,64 +7,84 @@ using WebAppForSolocoProject.Utilities;
 
 namespace WebAppForSolocoProject.Services
 {
-    public class OwnerData : IOwnerData
+    public class OwnerData 
     {
-        public IEnumerable<Owner> Owners {
-            get
-            {
-                return GetOwnersFromConfig();
-            }
-        }
-
-        private void CheckForChildOwners(List<Owner> owners)
-        {
-            for(int i=0; i<owners.Count(); i++)
-            {
-
-                for(int j=0; j<owners[i].Paths.Count(); j++)
-                {
-                    string path = owners[i].Paths[j];
-                    if (path.Contains("ChildOwners"))
-                    {
-                        string[] childOwners = new string[0];
-                        int idx = path.IndexOf('=');
-                        childOwners = Utility.SplitCSL(",", path.Substring(idx+1));
-                        owners[i].Paths.Remove(path);
-                        for(int k=0; k<childOwners.Length; k++)
-                        {
-                            owners.Add(new Owner { Name = childOwners[k], Paths = owners[i].Paths });
-                        }
-                        owners.Remove(owners[i]);
-                        i--;
-                    }
-                }
-            }
-        }
-
-        private IEnumerable<Owner> GetOwnersFromConfig()
+        public IEnumerable<Owner> GetOwners()
         {
             List<Owner> Owners = new List<Owner>();
+            Owners = ReadFromConfig();
+            Owners = CheckForChildOwners(Owners);
+            RemoveStringThatIsNotPath(Owners);
+            ConvertStringToPaths(Owners);
+            return Owners;
+        }
+
+        private List<Owner> ReadFromConfig()
+        {
+            List<Owner> owners = new List<Owner>();
             string config = ConfigurationManager.AppSettings["..."].ToString();
             string[] configList = Utility.SplitCSL(@"\r?\n", config);
             for (int i = 0; i < configList.Length; i++)
             {
-                Owner lastOwner = new Owner() { Paths = new List<string>() };
+                Owner owner = new Owner() { Paths = new List<string>() };
                 if (configList[i].Contains("Importers") && configList[i - 1][2] != '.')
                 {
-                    lastOwner.Name = configList[i - 1].Substring(2);
+                    owner.Name = configList[i - 1].Substring(2);
                     i++;
                     while (!string.IsNullOrWhiteSpace(configList[i]))
                     {
-                        if (configList[i].Contains("ChildOwners") || configList[i].Contains("FTP3rdparty"))
-                            lastOwner.Paths.Add(configList[i]);
+
+                        owner.Paths.Add(configList[i]);
                         i++;
                     }
-                    Owners.Add(lastOwner);
+                    owners.Add(owner);
                 }
             }
-            CheckForChildOwners(Owners);
-            ConvertStringToPaths(Owners);
-            return Owners;
+            return owners;
+        }
+
+        private List<Owner> CheckForChildOwners(List<Owner> owners)
+        {
+            List<Owner> updatedOwners = new List<Owner>();
+            foreach (var owner in owners)
+            {
+                bool haveChildOwners = false;
+                foreach (var path in owner.Paths)
+                {
+                    if(path.Contains("ChildOwners"))
+                    {
+                        haveChildOwners = true;
+                        string[] childOwners = new string[0];
+                        int idx = path.IndexOf('=');
+                        childOwners = Utility.SplitCSL(",", path.Substring(idx+1));
+                        foreach (var child in childOwners)
+                        {
+                            updatedOwners.Add(new Owner()
+                            {
+                                Name = child,
+                                Paths = owner.Paths
+                            });
+                        }
+                    }
+                }
+                if (!haveChildOwners)
+                    updatedOwners.Add(owner);
+            }
+            return updatedOwners;
+        }
+
+        private void RemoveStringThatIsNotPath(List<Owner> owners)
+        {            
+            foreach (var owner in owners)
+            {
+                List<string> updatedPaths = new List<string>();
+                foreach (var path in owner.Paths)
+                {
+                    if (path.Contains("FTP3rdparty"))
+                        updatedPaths.Add(path);
+                }
+                owner.Paths = updatedPaths;
+            }
         }
 
         private void ConvertStringToPaths(List<Owner> owners)

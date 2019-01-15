@@ -7,10 +7,11 @@
 <form method="post">
     <label>Base path:</label>
     <input asp-for="basePath" />
-    <select asp-for="SelectedOwner" asp-items="@(new SelectList(Model.ownersList,"Name","Name"))"></select> <br>
+    <select asp-for="SelectedOwner" asp-items="@(new SelectList(Model.ownersList.OrderBy(o=>o.Name),"Name","Name"))"></select> <br>
     <input type="submit" name="createBtn" value="Create" />
     <span asp-validation-for="basePath"></span>
 </form>
+<br>
 @foreach(var path in Model.CreatedPaths)
 {
     <div>@path</div>

@@ -8,7 +8,7 @@ namespace WebAppForSolocoProject.ViewModels
     {
         public string SelectedOwner{ get; set;}
 
-        public IEnumerable<Owner> ownersList { get; set; } = new List<Owner>();
+        public IEnumerable<Owner> ownersList { get; set; } 
 
         [Required]
         public string basePath { get; set; }
