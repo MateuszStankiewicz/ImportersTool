@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
+using System.Windows.Forms;
+using System.Threading;
 
 namespace WebAppForSolocoProject.Controllers
 {
@@ -16,6 +18,7 @@ namespace WebAppForSolocoProject.Controllers
         private IConfiguration configuration;
         private OwnerData ownerData;
 
+
         public HomeController(IConfiguration configuration, OwnerData ownerData)
         {
             this.configuration = configuration;
@@ -23,11 +26,14 @@ namespace WebAppForSolocoProject.Controllers
         }
 
         [HttpGet]
-        public IActionResult Create()
+        public IActionResult Create(string changeBasePathBtn)
         {
             var model = new HomeCreateVM();
             model.ownersList = ownerData.GetOwners();
-            model.basePath = ConfigurationManager.AppSettings["basePath"].ToString();
+            if(changeBasePathBtn!=null)
+                BrowseBasePathFolder(model);
+            else
+                model.basePath = ConfigurationManager.AppSettings["basePath"].ToString();
             return View(model);
         }
 
@@ -44,7 +50,7 @@ namespace WebAppForSolocoProject.Controllers
                     foreach (var path in owner.Paths)
                     {
                         string pathToCreate = model.basePath + "\\" + model.SelectedOwner + "\\" + path;
-                        if(Directory.Exists(pathToCreate))
+                        if (Directory.Exists(pathToCreate))
                         {
                             pathToCreate += " - directory already exist.";
                         }
@@ -59,10 +65,29 @@ namespace WebAppForSolocoProject.Controllers
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    return BadRequest("You don't have access in selected directory. Please change your base path.");
+                    model.CreatedPaths.Add("You don't have access in selected directory. Please change your base path.");
                 }
-            }    
+            }
             return View("Create",model);
         }
+
+        private void BrowseBasePathFolder(HomeCreateVM model)
+        {
+            Thread thread = new Thread(new ThreadStart(ThreadMethod));
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            thread.Join();
+
+            void ThreadMethod()
+            {
+                var folder = new FolderBrowserDialog();
+                DialogResult result = folder.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    model.basePath =  folder.SelectedPath;
+                }
+            }
+        }
+
     }
 }
