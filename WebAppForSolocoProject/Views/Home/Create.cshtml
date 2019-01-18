@@ -4,18 +4,28 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<form method="post">
+<form name="Form" method="post">
     <label>Base path:</label>
-    <input asp-for="basePath" />
-    <select asp-for="SelectedOwner" asp-items="@(new SelectList(Model.ownersList.OrderBy(o=>o.Name),"Name","Name"))"></select> 
-    <input type="submit" name="createBtn" value="Create" /> <br />
-    <span asp-validation-for="basePath" class="text-danger"></span>
+    <input value="@Model.BasePath" asp-for="BasePath" />
+    <input asp-action="ChangeBasePath" type="submit" name="button" value="Change Base Path"> <br />
+    <span asp-validation-for="BasePath" class="text-danger"></span> <br />
+    <label>Owner:</label>
+    <select asp-for="SelectedOwnerName" asp-items="@(new SelectList(Model.OwnersList,"Name","Name"))" onchange="DoPostBack();"></select>
+    <label>Quality folder</label>
+    <select asp-for="SelectedFolder" asp-items="@(new SelectList(Model.FolderList))"></select> <br />
+    <button asp-action="SelectFiles" type="submit">Select Files</button>
+    <input asp-action="Create" type="submit" name="createBtn" value="Create" /> 
 </form>
-<form method="get">
-    <button type="submit" name="changeBasePathBtn" value="Change Base Path">Change Base Path</button>
-</form>
+
 <br>
-@foreach(var path in Model.CreatedPaths)
+@foreach (var path in Model.Logs)
 {
     <div>@path</div>
 }
+
+<script>
+    function DoPostBack() {
+        document.Form.action = "/home/GetFolders";
+        document.Form.submit();
+    }
+</script>

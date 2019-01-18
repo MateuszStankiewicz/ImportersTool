@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Linq;
 using WebAppForSolocoProject.Models;
 using WebAppForSolocoProject.Utilities;
+using System.Diagnostics;
 
 namespace WebAppForSolocoProject.Services
 {
@@ -15,7 +16,11 @@ namespace WebAppForSolocoProject.Services
             Owners = ReadFromConfig();
             Owners = CheckForChildOwners(Owners);
             RemoveStringThatIsNotPath(Owners);
-            ConvertStringToPaths(Owners);
+            foreach (var owner in Owners)
+            {
+                owner.Paths = ConvertStringToPaths(owner.Paths);
+                owner.SourceFolders = ConvertStringToPaths(owner.SourceFolders);
+            }
             return Owners;
         }
 
@@ -26,14 +31,18 @@ namespace WebAppForSolocoProject.Services
             string[] configList = Utility.SplitCSL(@"\r?\n", config);
             for (int i = 0; i < configList.Length; i++)
             {
-                Owner owner = new Owner() { Paths = new List<string>() };
+                Owner owner = new Owner()
+                {
+                    Paths = new List<string>(),
+                    SourceFolders = new List<string>(),
+                    QualityFolders = new List<string>()
+                };
                 if (configList[i].Contains("Importers") && configList[i - 1][2] != '.')
                 {
                     owner.Name = configList[i - 1].Substring(2);
                     i++;
                     while (!string.IsNullOrWhiteSpace(configList[i]))
                     {
-
                         owner.Paths.Add(configList[i]);
                         i++;
                     }
@@ -62,7 +71,9 @@ namespace WebAppForSolocoProject.Services
                             updatedOwners.Add(new Owner()
                             {
                                 Name = child,
-                                Paths = owner.Paths
+                                Paths = owner.Paths,
+                                SourceFolders = owner.SourceFolders,
+                                QualityFolders = owner.QualityFolders
                             });
                         }
                     }
@@ -81,19 +92,27 @@ namespace WebAppForSolocoProject.Services
                 foreach (var path in owner.Paths)
                 {
                     if (path.Contains("FTP3rdparty"))
+                    {
                         updatedPaths.Add(path);
+                        if(path.Contains("SourceFolder"))
+                        {
+                            owner.SourceFolders.Add(path);
+                            if (path.Contains("SD"))
+                                owner.QualityFolders.Add("SD");
+                            if (path.Contains("HD"))
+                                owner.QualityFolders.Add("HD");
+                        }
+                    }
                 }
                 owner.Paths = updatedPaths;
             }
         }
 
-        private void ConvertStringToPaths(List<Owner> owners)
+        private List<string> ConvertStringToPaths(List<string> strings)
         {
-            foreach (var owner in owners)
-            {
                 List<string> updatedPaths = new List<string>();
 
-                foreach (var path in owner.Paths)
+                foreach (var path in strings)
                 {
                     string[] paths = new string[0];
                     if (path.Contains(";"))
@@ -109,8 +128,7 @@ namespace WebAppForSolocoProject.Services
                         updatedPaths.Add(TrimToPath(path));
                     }
                 }
-                owner.Paths = updatedPaths;
-            }
+                return updatedPaths;
         }
 
         private string TrimToPath(string path)
@@ -120,5 +138,6 @@ namespace WebAppForSolocoProject.Services
             idx = pathToAdd.LastIndexOf(@"FTP3rdparty\");
             return pathToAdd.Substring(idx + 12);
         }
+
     }
 }
