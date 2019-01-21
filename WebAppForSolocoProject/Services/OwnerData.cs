@@ -21,7 +21,7 @@ namespace WebAppForSolocoProject.Services
                 owner.Paths = ConvertStringToPaths(owner.Paths);
                 owner.SourceFolders = ConvertStringToPaths(owner.SourceFolders);
             }
-            return Owners;
+            return Owners.OrderBy(o => o.Name);
         }
 
         private List<Owner> ReadFromConfig()
@@ -91,15 +91,15 @@ namespace WebAppForSolocoProject.Services
                 List<string> updatedPaths = new List<string>();
                 foreach (var path in owner.Paths)
                 {
-                    if (path.Contains("FTP3rdparty"))
+                    if (path.Contains("FTP3rdparty") && owner.Paths.Any(p=>p.Contains(path)))
                     {
                         updatedPaths.Add(path);
                         if(path.Contains("SourceFolder"))
                         {
                             owner.SourceFolders.Add(path);
-                            if (path.Contains("SD"))
+                            if (path.Contains("SD") && !owner.QualityFolders.Any(q=>q.Contains("SD")))
                                 owner.QualityFolders.Add("SD");
-                            if (path.Contains("HD"))
+                            if (path.Contains("HD") && !owner.QualityFolders.Any(q => q.Contains("HD")))
                                 owner.QualityFolders.Add("HD");
                         }
                     }

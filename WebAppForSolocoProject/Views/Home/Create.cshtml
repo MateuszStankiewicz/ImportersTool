@@ -3,18 +3,23 @@
     ViewData["Title"] = "Create";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
-
 <form name="Form" method="post">
-    <label>Base path:</label>
-    <input value="@Model.BasePath" asp-for="BasePath" />
-    <input asp-action="ChangeBasePath" type="submit" name="button" value="Change Base Path"> <br />
+    <br />
+    <div class="form-inline">
+        <label>Base path: </label>
+        <input value="@Model.BasePath" asp-for="BasePath" placeholder="Base path:" class="form-control" />
+        <input asp-action="ChangeBasePath" type="submit" name="button" value="Change Base Path" class="btn btn-info"> <br />
+    </div>
     <span asp-validation-for="BasePath" class="text-danger"></span> <br />
-    <label>Owner:</label>
-    <select asp-for="SelectedOwnerName" asp-items="@(new SelectList(Model.OwnersList,"Name","Name"))" onchange="DoPostBack();"></select>
-    <label>Quality folder</label>
-    <select asp-for="SelectedFolder" asp-items="@(new SelectList(Model.FolderList))"></select> <br />
-    <button asp-action="SelectFiles" type="submit">Select Files</button>
-    <input asp-action="Create" type="submit" name="createBtn" value="Create" /> 
+    <div class="form-inline">
+        <label>Owner: </label>
+        <select asp-for="SelectedOwnerName" asp-items="@(new SelectList(Model.OwnersList,"Name","Name"))" onchange="DoPostBack();" class="form-control"></select>
+        <label>Quality folder: </label>
+        <select asp-for="SelectedFolder" asp-items="@(new SelectList(Model.FolderList))" class="form-control"></select> <br />
+    </div>
+    <br />
+    <button asp-action="SelectFiles" type="submit" class="btn btn-info">Select Files</button>
+    <input asp-action="Create" type="submit" name="createBtn" value="Create" class="btn btn-info" />
 </form>
 
 <br>

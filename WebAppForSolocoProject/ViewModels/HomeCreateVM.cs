@@ -10,7 +10,6 @@ namespace WebAppForSolocoProject.ViewModels
         public string SelectedFolder { get; set; }
         public IEnumerable<Owner> OwnersList { get; set; }
         public IEnumerable<string> FolderList { get; set; }
-        [Required]
         public string BasePath { get; set; }
         public List<string> Logs { get; set; }
         public List<string> Files { get; set; }

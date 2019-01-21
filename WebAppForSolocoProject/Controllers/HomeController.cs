@@ -10,6 +10,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace WebAppForSolocoProject.Controllers
 {
@@ -18,7 +19,6 @@ namespace WebAppForSolocoProject.Controllers
         private IConfiguration configuration;
         private OwnerData ownerData;
 
-
         public HomeController(IConfiguration configuration, OwnerData ownerData)
         {
             this.configuration = configuration;
@@ -26,24 +26,31 @@ namespace WebAppForSolocoProject.Controllers
         }
 
         [HttpGet]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
             var model = new HomeCreateVM()
             {
                 Logs = new List<string>()
             };
-            model.OwnersList = ownerData.GetOwners().OrderBy(o => o.Name);
-            model.FolderList = model.OwnersList.First().QualityFolders;
-            model.BasePath = ConfigurationManager.AppSettings["basePath"].ToString();
+            await Task.Run(() =>
+            {
+                model.OwnersList = ownerData.GetOwners();
+                model.FolderList = model.OwnersList.First().QualityFolders;
+                model.BasePath = ConfigurationManager.AppSettings["basePath"].ToString();
+            });
             return View(model);
         }
 
         [HttpPost]
-        public IActionResult Create(HomeCreateVM model)
+        public async Task<IActionResult> Create(HomeCreateVM model)
         {
-            UpdateModel(model);
-            if (ModelState.IsValid)
+            await UpdateModel(model);
+            if (model.BasePath == null)
             {
+                model.Logs.Add("You must provide a base path!");
+            }
+            else
+            { 
                 try
                 {
                     foreach (var path in model.SelectedOwner.Paths)
@@ -70,97 +77,111 @@ namespace WebAppForSolocoProject.Controllers
             return View("Create",model);
         }
 
-        public IActionResult ChangeBasePath(HomeCreateVM model)
+        public async Task<IActionResult> ChangeBasePath(HomeCreateVM model)
         {
-            UpdateModel(model);
+            await UpdateModel(model);
 
-            Thread thread = new Thread(new ThreadStart(ThreadMethod));
+            var path = new TaskCompletionSource<string>();
+
+            Thread thread = new Thread(()=>BrowseFolder(path));
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
-            thread.Join();
 
-            void ThreadMethod()
+            model.BasePath = await path.Task;
+
+            return View("Create", model);
+        }
+
+        private void BrowseFolder(TaskCompletionSource<string> path)
+        {
+            var folder = new FolderBrowserDialog();
+            DialogResult result = folder.ShowDialog();
+            if (result == DialogResult.OK)
             {
-                var folder = new FolderBrowserDialog();
-                DialogResult result = folder.ShowDialog();
-                if (result == DialogResult.OK)
-                {
-                    model.BasePath = folder.SelectedPath;
-                }
+                path.SetResult(folder.SelectedPath);
             }
-
-            return View("Create", model);
-
         }
 
-        public IActionResult GetFolders(HomeCreateVM model)
+        public async Task<IActionResult> GetFolders(HomeCreateVM model)
         {
-            UpdateModel(model);
+            await UpdateModel(model);
 
             return View("Create", model);
         }
 
-        public IActionResult SelectFiles(HomeCreateVM model)
+        public async Task<IActionResult> SelectFiles(HomeCreateVM model)
         {
-            UpdateModel(model);
+            await UpdateModel(model);
 
-            //if(model.SelectedOwner.SourceFolders!=null)
-            //{
                 if (model.SelectedFolder != null)
                     model.PathToSaveFile = model.SelectedOwner.SourceFolders.FirstOrDefault(s => s.Contains(model.SelectedFolder));
                 else
                     model.PathToSaveFile = model.SelectedOwner.SourceFolders.FirstOrDefault();
-            //}
 
-            if (ModelState.IsValid)
+            if(model.BasePath==null)
             {
-                if(model.PathToSaveFile == null)
-                {
-                    model.Logs.Add("Selected owner does not need initialize files.");
-                }
-                else if(!Directory.Exists(Path.Combine(model.BasePath, model.SelectedOwnerName, model.PathToSaveFile)))
-                {
-                    model.Logs.Add("You must first create directories for selected Base Path and Owner.");
-                    model.Logs.Add("Click 'Create' button");
-                }
-                else
-                {
-                    Thread thread = new Thread(new ThreadStart(ThreadMethod));
-                    thread.SetApartmentState(ApartmentState.STA);
-                    thread.Start();
-                    thread.Join();
+                model.Logs.Add("You must provide a base path!");
+            }
+            else if(model.PathToSaveFile == null)
+            {
+                model.Logs.Add("Selected owner does not need initialize files.");
+            }
+            else if(!Directory.Exists(Path.Combine(model.BasePath, model.SelectedOwnerName, model.PathToSaveFile)))
+            {
+                model.Logs.Add("You must first create directories for selected Base Path and Owner.");
+                model.Logs.Add("Click 'Create' button");
+            }
+            else
+            {
+                var files = new TaskCompletionSource<List<string>>();
 
-                    void ThreadMethod()
-                    {
-                        using (OpenFileDialog openFileDialog = new OpenFileDialog())
-                        {
-                            model.Files = new List<string>();
-                            openFileDialog.Filter = "Importer Files(*.jpg;*.xml;*.xlsx;*.srt)|*.JPG;*.XML;*.XLSX;*.SRT|All files (*.*)|*.*";
-                            openFileDialog.Multiselect = true;
+                Thread thread = new Thread(() => BrowseFiles(files));
+                thread.SetApartmentState(ApartmentState.STA);
+                thread.Start();
 
-                            if (openFileDialog.ShowDialog() == DialogResult.OK)
-                            {
-                                foreach (string path in openFileDialog.FileNames)
-                                {
-                                    model.Files.Add(path);
-                                    System.IO.File.Copy(path, Path.Combine(model.BasePath, model.SelectedOwnerName, model.PathToSaveFile, Path.GetFileName(path)), true);
-                                    model.Logs.Add(path + " - file save in " + Path.Combine(model.BasePath, model.SelectedOwnerName, model.PathToSaveFile));
-                                }
-                            }
-                        }
-                    }
+                model.Files = await files.Task;
+
+                foreach (string file in model.Files)
+                {
+                    System.IO.File.Copy(file, Path.Combine(model.BasePath, model.SelectedOwnerName, model.PathToSaveFile, Path.GetFileName(file)), true);
+                    model.Logs.Add(file + " - file save in " + Path.Combine(model.BasePath, model.SelectedOwnerName, model.PathToSaveFile));
                 }
+
+                return View("Create", model);
             }
             return View("Create", model);
         }
-        
-        private void UpdateModel(HomeCreateVM model)
+
+        private void BrowseFiles(TaskCompletionSource<List<string>> files)
+        {
+            var paths = new List<string>();
+
+            using (OpenFileDialog openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.Filter = "Importer Files(*.jpg;*.xml;*.xlsx;*.srt)|*.JPG;*.XML;*.XLSX;*.SRT|All files (*.*)|*.*";
+                openFileDialog.Multiselect = true;
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    foreach (string file in openFileDialog.FileNames)
+                    {
+                        paths.Add(file);
+                    }
+                }
+            }
+            files.SetResult(paths);
+        }
+
+        private async Task UpdateModel(HomeCreateVM model)
         {
             if (model.Logs == null)
                 model.Logs = new List<string>();
-            model.OwnersList = ownerData.GetOwners().OrderBy(o => o.Name);
-            model.SelectedOwner = model.OwnersList.FirstOrDefault(o => o.Name == model.SelectedOwnerName);
-            model.FolderList = model.SelectedOwner.QualityFolders;
+            await Task.Run(() =>
+            {
+                model.OwnersList = ownerData.GetOwners();
+                model.SelectedOwner = model.OwnersList.FirstOrDefault(o => o.Name == model.SelectedOwnerName);
+                model.FolderList = model.SelectedOwner.QualityFolders;
+            });
         }
     }
 }
