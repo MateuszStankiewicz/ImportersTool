@@ -14,23 +14,28 @@
     <div class="form-inline">
         <label>Owner: </label>
         <select asp-for="SelectedOwnerName" asp-items="@(new SelectList(Model.OwnersList,"Name","Name"))" onchange="DoPostBack();" class="form-control"></select>
-        <label>Quality folder: </label>
-        <select asp-for="SelectedFolder" asp-items="@(new SelectList(Model.FolderList))" class="form-control"></select> <br />
+        <label id="QualityFolder">Quality folder: </label>
+        <select asp-for="SelectedFolder" asp-items="@(new SelectList(Model.FolderList))" class="form-control" ></select> <br />
     </div>
     <br />
     <button asp-action="SelectFiles" type="submit" class="btn btn-info">Select Files</button>
-    <input asp-action="Create" type="submit" name="createBtn" value="Create" class="btn btn-info" />
+    <input asp-action="Run" type="submit" value="Run" class="btn btn-info" />
 </form>
 
-<br>
-@foreach (var path in Model.Logs)
+@foreach(var log in Model.Logs)
 {
-    <div>@path</div>
+    <div>@log</div>
 }
 
 <script>
+    if (@Model.FolderList.Count() === 0) {
+        let sf = document.getElementById("SelectedFolder");
+        let qf = document.getElementById("QualityFolder");
+        sf.style.display = "none";
+        qf.style.display = "none";
+    }
     function DoPostBack() {
         document.Form.action = "/home/GetFolders";
-        document.Form.submit();
+        document.Form.submit();    
     }
 </script>

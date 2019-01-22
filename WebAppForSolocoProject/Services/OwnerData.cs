@@ -30,15 +30,15 @@ namespace WebAppForSolocoProject.Services
             string config = ConfigurationManager.AppSettings["..."].ToString();
             string[] configList = Utility.SplitCSL(@"\r?\n", config);
             for (int i = 0; i < configList.Length; i++)
-            {
-                Owner owner = new Owner()
-                {
-                    Paths = new List<string>(),
-                    SourceFolders = new List<string>(),
-                    QualityFolders = new List<string>()
-                };
+            {               
                 if (configList[i].Contains("Importers") && configList[i - 1][2] != '.')
                 {
+                    Owner owner = new Owner()
+                    {
+                        Paths = new List<string>(),
+                        SourceFolders = new List<string>(),
+                        QualityFolders = new List<Quality>()
+                    };
                     owner.Name = configList[i - 1].Substring(2);
                     i++;
                     while (!string.IsNullOrWhiteSpace(configList[i]))
@@ -97,10 +97,10 @@ namespace WebAppForSolocoProject.Services
                         if(path.Contains("SourceFolder"))
                         {
                             owner.SourceFolders.Add(path);
-                            if (path.Contains("SD") && !owner.QualityFolders.Any(q=>q.Contains("SD")))
-                                owner.QualityFolders.Add("SD");
-                            if (path.Contains("HD") && !owner.QualityFolders.Any(q => q.Contains("HD")))
-                                owner.QualityFolders.Add("HD");
+                            if (path.Contains("SD") && !owner.QualityFolders.Any(q=>q==Quality.SD))
+                                owner.QualityFolders.Add(Quality.SD);
+                            if (path.Contains("HD") && !owner.QualityFolders.Any(q => q == Quality.HD))
+                                owner.QualityFolders.Add(Quality.HD);
                         }
                     }
                 }
@@ -137,6 +137,11 @@ namespace WebAppForSolocoProject.Services
             string pathToAdd = (idx == -1) ? path : path.Substring(idx + 1);
             idx = pathToAdd.LastIndexOf(@"FTP3rdparty\");
             return pathToAdd.Substring(idx + 12);
+        }
+
+        public enum Quality
+        {
+            SD,HD
         }
 
     }

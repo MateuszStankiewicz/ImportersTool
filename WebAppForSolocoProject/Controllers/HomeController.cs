@@ -1,6 +1,5 @@
 ﻿using System;
 using Microsoft.AspNetCore.Mvc;
-using WebAppForSolocoProject.Models;
 using System.Configuration;
 using WebAppForSolocoProject.Services;
 using WebAppForSolocoProject.ViewModels;
@@ -11,6 +10,7 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Threading;
 using System.Threading.Tasks;
+using WebAppForSolocoProject.Utilities;
 
 namespace WebAppForSolocoProject.Controllers
 {
@@ -42,9 +42,13 @@ namespace WebAppForSolocoProject.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(HomeCreateVM model)
+        public async Task<IActionResult> Run(HomeCreateVM model)
         {
-            await UpdateModel(model);
+            return View("Create", model);
+        }
+
+        public async Task<HomeCreateVM> CreateDirectories(HomeCreateVM model)
+        {
             if (model.BasePath == null)
             {
                 model.Logs.Add("You must provide a base path!");
@@ -53,28 +57,30 @@ namespace WebAppForSolocoProject.Controllers
             { 
                 try
                 {
-                    foreach (var path in model.SelectedOwner.Paths)
+                    await Task.Run(() =>
                     {
-                        string pathToCreate = Path.Combine(model.BasePath, model.SelectedOwnerName, path);
-                        if (Directory.Exists(pathToCreate))
+                        foreach (var path in model.SelectedOwner.Paths)
                         {
-                            pathToCreate += " - directory already exist.";
+                            string pathToCreate = Path.Combine(model.BasePath, model.SelectedOwnerName, path);
+                            if (Directory.Exists(pathToCreate))
+                            {
+                                pathToCreate += " - directory already exist.";
+                            }
+                            else
+                            {
+                                Directory.CreateDirectory(pathToCreate);
+                                pathToCreate += " - directory succesfully created.";
+                            }
+                            model.Logs.Add(pathToCreate);
                         }
-                        else
-                        {
-                            Directory.CreateDirectory(pathToCreate);
-                            pathToCreate += " - directory succesfully created.";
-                        }
-                        model.Logs.Add(pathToCreate);
-                    }
-                    return View("Create", model);
+                    });
                 }
                 catch (UnauthorizedAccessException)
                 {
                     model.Logs.Add("You don't have access in selected directory. Please change your base path.");
                 }
             }
-            return View("Create",model);
+            return model;
         }
 
         public async Task<IActionResult> ChangeBasePath(HomeCreateVM model)
@@ -87,7 +93,8 @@ namespace WebAppForSolocoProject.Controllers
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
 
-            model.BasePath = await path.Task;
+            if(path.Task!=null)
+                model.BasePath = await path.Task;
 
             return View("Create", model);
         }
@@ -99,6 +106,10 @@ namespace WebAppForSolocoProject.Controllers
             if (result == DialogResult.OK)
             {
                 path.SetResult(folder.SelectedPath);
+            }
+            else
+            {
+                path.SetResult(null);
             }
         }
 
@@ -118,18 +129,11 @@ namespace WebAppForSolocoProject.Controllers
                 else
                     model.PathToSaveFile = model.SelectedOwner.SourceFolders.FirstOrDefault();
 
-            if(model.BasePath==null)
-            {
-                model.Logs.Add("You must provide a base path!");
-            }
-            else if(model.PathToSaveFile == null)
+            model = await CreateDirectories(model);
+
+            if(model.PathToSaveFile == null)
             {
                 model.Logs.Add("Selected owner does not need initialize files.");
-            }
-            else if(!Directory.Exists(Path.Combine(model.BasePath, model.SelectedOwnerName, model.PathToSaveFile)))
-            {
-                model.Logs.Add("You must first create directories for selected Base Path and Owner.");
-                model.Logs.Add("Click 'Create' button");
             }
             else
             {
@@ -146,8 +150,6 @@ namespace WebAppForSolocoProject.Controllers
                     System.IO.File.Copy(file, Path.Combine(model.BasePath, model.SelectedOwnerName, model.PathToSaveFile, Path.GetFileName(file)), true);
                     model.Logs.Add(file + " - file save in " + Path.Combine(model.BasePath, model.SelectedOwnerName, model.PathToSaveFile));
                 }
-
-                return View("Create", model);
             }
             return View("Create", model);
         }
@@ -158,7 +160,7 @@ namespace WebAppForSolocoProject.Controllers
 
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
-                openFileDialog.Filter = "Importer Files(*.jpg;*.xml;*.xlsx;*.srt)|*.JPG;*.XML;*.XLSX;*.SRT|All files (*.*)|*.*";
+                openFileDialog.Filter = Utility.fileExtensions;
                 openFileDialog.Multiselect = true;
 
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
@@ -183,5 +185,6 @@ namespace WebAppForSolocoProject.Controllers
                 model.FolderList = model.SelectedOwner.QualityFolders;
             });
         }
+
     }
 }
