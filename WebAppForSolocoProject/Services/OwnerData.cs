@@ -16,11 +16,7 @@ namespace WebAppForSolocoProject.Services
             Owners = ReadFromConfig();
             Owners = CheckForChildOwners(Owners);
             RemoveStringThatIsNotPath(Owners);
-            foreach (var owner in Owners)
-            {
-                owner.Paths = ConvertStringToPaths(owner.Paths);
-                owner.SourceFolders = ConvertStringToPaths(owner.SourceFolders);
-            }
+            ConvertConfigToFolderPathPair(Owners);
             return Owners.OrderBy(o => o.Name);
         }
 
@@ -35,15 +31,14 @@ namespace WebAppForSolocoProject.Services
                 {
                     Owner owner = new Owner()
                     {
-                        Paths = new List<string>(),
-                        SourceFolders = new List<string>(),
+                        Config = new List<string>(),
                         QualityFolders = new List<Quality>()
                     };
                     owner.Name = configList[i - 1].Substring(2);
                     i++;
                     while (!string.IsNullOrWhiteSpace(configList[i]))
                     {
-                        owner.Paths.Add(configList[i]);
+                        owner.Config.Add(configList[i]);
                         i++;
                     }
                     owners.Add(owner);
@@ -58,7 +53,7 @@ namespace WebAppForSolocoProject.Services
             foreach (var owner in owners)
             {
                 bool haveChildOwners = false;
-                foreach (var path in owner.Paths)
+                foreach (var path in owner.Config)
                 {
                     if(path.Contains("ChildOwners"))
                     {
@@ -71,9 +66,9 @@ namespace WebAppForSolocoProject.Services
                             updatedOwners.Add(new Owner()
                             {
                                 Name = child,
-                                Paths = owner.Paths,
-                                SourceFolders = owner.SourceFolders,
-                                QualityFolders = owner.QualityFolders
+                                Config = owner.Config,
+                                QualityFolders = owner.QualityFolders,
+                                ChildOwnerOf = owner.Name
                             });
                         }
                     }
@@ -87,16 +82,15 @@ namespace WebAppForSolocoProject.Services
         private void RemoveStringThatIsNotPath(List<Owner> owners)
         {            
             foreach (var owner in owners)
-            {
+            {                
                 List<string> updatedPaths = new List<string>();
-                foreach (var path in owner.Paths)
+                foreach (var path in owner.Config)
                 {
-                    if (path.Contains("FTP3rdparty") && owner.Paths.Any(p=>p.Contains(path)))
+                    if (path.Contains("FTP3rdparty"))
                     {
                         updatedPaths.Add(path);
                         if(path.Contains("SourceFolder"))
                         {
-                            owner.SourceFolders.Add(path);
                             if (path.Contains("SD") && !owner.QualityFolders.Any(q=>q==Quality.SD))
                                 owner.QualityFolders.Add(Quality.SD);
                             if (path.Contains("HD") && !owner.QualityFolders.Any(q => q == Quality.HD))
@@ -104,39 +98,59 @@ namespace WebAppForSolocoProject.Services
                         }
                     }
                 }
-                owner.Paths = updatedPaths;
+                owner.Config = updatedPaths;
             }
         }
 
-        private List<string> ConvertStringToPaths(List<string> strings)
+        private void ConvertConfigToFolderPathPair(List<Owner> owners)
         {
-                List<string> updatedPaths = new List<string>();
-
-                foreach (var path in strings)
+            foreach (var owner in owners)
+            {
+                Dictionary<string, List<string>> folderPathPairs = new Dictionary<string, List<string>>();
+                foreach (var path in owner.Config)
                 {
-                    string[] paths = new string[0];
-                    if (path.Contains(";"))
+                    string key = TrimToFolder(path);
+                    List<string> paths = ConvertStringToPaths(path);
+                    if(!folderPathPairs.ContainsKey(key))
                     {
-                        paths = Utility.SplitCSL(";", path);
-                        foreach (var splitPath in paths)
-                        {
-                            updatedPaths.Add(TrimToPath(splitPath));
-                        }
-                    }
-                    else
-                    {
-                        updatedPaths.Add(TrimToPath(path));
+                        folderPathPairs.Add(key, paths);
                     }
                 }
-                return updatedPaths;
+                owner.FolderPathPairs = folderPathPairs;
+            }
+        }
+
+        private string TrimToFolder(string path)
+        {
+            int idx = path.IndexOf('=');
+            return path.Substring(6,idx-6);
+        }
+
+        private List<string> ConvertStringToPaths(string path)
+        {
+            List<string> updatedPaths = new List<string>();
+            string[] paths = new string[0];
+            if (path.Contains(";"))
+            {
+                paths = Utility.SplitCSL(";", path);
+                foreach (var splitPath in paths)
+                {
+                    updatedPaths.Add(TrimToPath(splitPath));
+                }
+            }
+            else
+            {
+                updatedPaths.Add(TrimToPath(path));
+            }
+            return updatedPaths;
         }
 
         private string TrimToPath(string path)
         {
-            int idx = path.IndexOf('=');
-            string pathToAdd = (idx == -1) ? path : path.Substring(idx + 1);
-            idx = pathToAdd.LastIndexOf(@"FTP3rdparty\");
-            return pathToAdd.Substring(idx + 12);
+            int idx = path.LastIndexOf(@"FTP3rdparty\");
+            path =  path.Substring(idx + 12);
+            idx = path.IndexOf('\\');
+            return path.Substring(idx+1);
         }
 
         public enum Quality

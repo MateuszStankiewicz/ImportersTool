@@ -15,14 +15,16 @@
         <label>Owner: </label>
         <select asp-for="SelectedOwnerName" asp-items="@(new SelectList(Model.OwnersList,"Name","Name"))" onchange="DoPostBack();" class="form-control"></select>
         <label id="QualityFolder">Quality folder: </label>
-        <select asp-for="SelectedFolder" asp-items="@(new SelectList(Model.FolderList))" class="form-control" ></select> <br />
+        <select asp-for="SelectedFolder" asp-items="@(new SelectList(Model.FolderList))" class="form-control"></select> <br />
     </div>
     <br />
     <button asp-action="SelectFiles" type="submit" class="btn btn-info">Select Files</button>
+    <button asp-action="UpdateConfig" type="submit" class="btn btn-info">Update Config</button>
     <input asp-action="Run" type="submit" value="Run" class="btn btn-info" />
 </form>
 
-@foreach(var log in Model.Logs)
+<br />
+@foreach (var log in Model.Logs)
 {
     <div>@log</div>
 }
@@ -36,6 +38,6 @@
     }
     function DoPostBack() {
         document.Form.action = "/home/GetFolders";
-        document.Form.submit();    
+        document.Form.submit();
     }
 </script>

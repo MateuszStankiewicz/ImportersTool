@@ -44,6 +44,7 @@ namespace WebAppForSolocoProject.Controllers
         [HttpPost]
         public async Task<IActionResult> Run(HomeCreateVM model)
         {
+            await UpdateModel(model);
             return View("Create", model);
         }
 
@@ -59,19 +60,22 @@ namespace WebAppForSolocoProject.Controllers
                 {
                     await Task.Run(() =>
                     {
-                        foreach (var path in model.SelectedOwner.Paths)
+                        foreach (var key in model.SelectedOwner.FolderPathPairs.Keys)
                         {
-                            string pathToCreate = Path.Combine(model.BasePath, model.SelectedOwnerName, path);
-                            if (Directory.Exists(pathToCreate))
+                            foreach (var path in model.SelectedOwner.FolderPathPairs.GetValueOrDefault(key))
                             {
-                                pathToCreate += " - directory already exist.";
+                                string pathToCreate = Path.Combine(model.BasePath, model.SelectedOwnerName, path);
+                                if (Directory.Exists(pathToCreate))
+                                {
+                                    pathToCreate += " - directory already exist.";
+                                }
+                                else
+                                {
+                                    Directory.CreateDirectory(pathToCreate);
+                                    pathToCreate += " - directory succesfully created.";
+                                }
+                                model.Logs.Add(pathToCreate);
                             }
-                            else
-                            {
-                                Directory.CreateDirectory(pathToCreate);
-                                pathToCreate += " - directory succesfully created.";
-                            }
-                            model.Logs.Add(pathToCreate);
                         }
                     });
                 }
@@ -124,19 +128,19 @@ namespace WebAppForSolocoProject.Controllers
         {
             await UpdateModel(model);
 
-                if (model.SelectedFolder != null)
-                    model.PathToSaveFile = model.SelectedOwner.SourceFolders.FirstOrDefault(s => s.Contains(model.SelectedFolder));
-                else
-                    model.PathToSaveFile = model.SelectedOwner.SourceFolders.FirstOrDefault();
-
-            model = await CreateDirectories(model);
-
-            if(model.PathToSaveFile == null)
+            List<string> sourceFolders = model.SelectedOwner.FolderPathPairs.GetValueOrDefault("SourceFolder");
+            if (sourceFolders == null)
             {
+                model = await CreateDirectories(model);
                 model.Logs.Add("Selected owner does not need initialize files.");
             }
             else
             {
+                if (model.SelectedFolder != null)
+                    model.PathToSaveFile = sourceFolders.FirstOrDefault(s => s.Contains(model.SelectedFolder));
+                else
+                    model.PathToSaveFile = sourceFolders.FirstOrDefault();
+
                 var files = new TaskCompletionSource<List<string>>();
 
                 Thread thread = new Thread(() => BrowseFiles(files));
@@ -144,6 +148,9 @@ namespace WebAppForSolocoProject.Controllers
                 thread.Start();
 
                 model.Files = await files.Task;
+
+                if(model.Files.Count()!=0)
+                    model = await CreateDirectories(model);
 
                 foreach (string file in model.Files)
                 {
@@ -160,7 +167,7 @@ namespace WebAppForSolocoProject.Controllers
 
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
-                openFileDialog.Filter = Utility.fileExtensions;
+                openFileDialog.Filter = Utility.importerFileExtensions;
                 openFileDialog.Multiselect = true;
 
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
@@ -186,5 +193,107 @@ namespace WebAppForSolocoProject.Controllers
             });
         }
 
+        public async Task<IActionResult> UpdateConfig(HomeCreateVM model)
+        {
+            await UpdateModel(model);
+
+            string config = ConfigurationManager.AppSettings["..."].ToString();
+            string[] configList = Utility.SplitCSL(@"\r?\n", config);
+
+            List<string> updateConfig = RewriteConfig(model, configList);
+
+            string path = await SaveToFile(updateConfig);
+
+            if (path != null)
+            {
+                model.Logs.Add("Config succesfully saved in "+ path);
+            }
+
+            return View("Create", model);
+        }
+        private List<string> RewriteConfig(HomeCreateVM model, string[] configList)
+        {
+            bool isOwnerConfig = false;
+            List<string> updateConfig = new List<string>();
+
+            foreach (var line in configList)
+            {
+                if (line.Contains("OwnersEnabled"))
+                {
+                    updateConfig.Add(". OwnersEnabled=" + model.SelectedOwnerName);
+                    continue;
+                }
+                if (line == ". " + model.SelectedOwnerName || line == ". " + model.SelectedOwner.ChildOwnerOf)
+                {
+                    isOwnerConfig = true;
+                }
+                if (line == string.Empty)
+                {
+                    isOwnerConfig = false;
+                }
+                if (isOwnerConfig)
+                {
+                    string path = line;
+                    foreach (var key in model.SelectedOwner.FolderPathPairs.Keys)
+                    {
+                        if (line.Contains(key)&&line.Contains("FTP3rdparty"))
+                        {
+                            path = string.Empty;
+                            int idx = line.IndexOf('=');
+                            foreach (var value in model.SelectedOwner.FolderPathPairs.GetValueOrDefault(key))
+                            {
+                                path += Path.Combine(model.BasePath, model.SelectedOwnerName, value);
+                                path += ";";
+                            }
+                            path = line.Substring(0, idx + 1) + path.Substring(0, path.Length - 1);
+                            break;
+                        }
+                    }
+                    updateConfig.Add(path);
+                }
+                else
+                {
+                    updateConfig.Add(line);
+                }
+            }
+            return updateConfig;
+        }
+
+        private async Task<string> SaveToFile(List<string> updateConfig)
+        {
+            var t = new TaskCompletionSource<string>();
+            Thread thread = new Thread(() => SaveFileDialog(t));
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+
+            string path = await t.Task;
+
+            if (path != null)
+            {
+                System.IO.File.WriteAllLines(path, updateConfig);
+            }
+
+            return path;
+        }
+
+        private void SaveFileDialog(TaskCompletionSource<string> file)
+        {
+            string path = null;
+
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.FileName = "app";
+                saveFileDialog.DefaultExt = "config";
+                saveFileDialog.Filter = Utility.configFileExtensions;
+                saveFileDialog.InitialDirectory =
+            Environment.GetFolderPath(Environment.SpecialFolder.MyComputer);
+
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    path = saveFileDialog.FileName;
+                }
+            }
+            file.SetResult(path);
+        }
     }
 }
