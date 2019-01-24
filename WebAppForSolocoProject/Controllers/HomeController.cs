@@ -80,17 +80,9 @@ namespace WebAppForSolocoProject.Controllers
 
         private string CreateDirectory(string pathToCreate)
         {
-            if (Directory.Exists(pathToCreate))
-            {
-                pathToCreate += " - directory already exist.";
-            }
-            else
-            {
-                Directory.CreateDirectory(pathToCreate);
-                pathToCreate += " - directory succesfully created.";
-            }
-
-            return pathToCreate;
+            return Directory.Exists(pathToCreate) 
+                ? pathToCreate + " - directory already exist." 
+                : Directory.CreateDirectory(pathToCreate).ToString() + " - directory succesfully created.";
         }
 
         public async Task<IActionResult> ChangeBasePath(HomeCreateVM model)
@@ -203,7 +195,7 @@ namespace WebAppForSolocoProject.Controllers
         {
             await UpdateModel(model);
             var appConfigFile = await ManageConfigFile.ParseAppConfigToStringArrayAsync();
-            List<string> updateConfig = RewriteConfig(model, appConfigFile);
+            var updateConfig = RewriteConfig(model, appConfigFile);
             string path = await SaveToFile(updateConfig);
 
             if (path != null)
@@ -235,8 +227,7 @@ namespace WebAppForSolocoProject.Controllers
                             int idx = line.IndexOf('=');
                             foreach (var value in model.SelectedOwner.FolderPathPairs.GetValueOrDefault(key))
                             {
-                                path += Path.Combine(model.BasePath, model.SelectedOwnerName, value);
-                                path += ";";
+                                path += Path.Combine(model.BasePath, model.SelectedOwnerName, value)+";";
                             }
                             path = line.Substring(0, idx + 1) + path.Substring(0, path.Length - 1);
                             updateConfig.Add(path);
@@ -259,7 +250,6 @@ namespace WebAppForSolocoProject.Controllers
                 if (line.Equals(config))
                     return true;
             }
-
             return false;
         }
 
