@@ -65,16 +65,7 @@ namespace WebAppForSolocoProject.Controllers
                             foreach (var path in model.SelectedOwner.FolderPathPairs.GetValueOrDefault(key))
                             {
                                 string pathToCreate = Path.Combine(model.BasePath, model.SelectedOwnerName, path);
-                                if (Directory.Exists(pathToCreate))
-                                {
-                                    pathToCreate += " - directory already exist.";
-                                }
-                                else
-                                {
-                                    Directory.CreateDirectory(pathToCreate);
-                                    pathToCreate += " - directory succesfully created.";
-                                }
-                                model.Logs.Add(pathToCreate);
+                                model.Logs.Add(CreateDirectory(pathToCreate));
                             }
                         }
                     });
@@ -85,6 +76,21 @@ namespace WebAppForSolocoProject.Controllers
                 }
             }
             return model;
+        }
+
+        private string CreateDirectory(string pathToCreate)
+        {
+            if (Directory.Exists(pathToCreate))
+            {
+                pathToCreate += " - directory already exist.";
+            }
+            else
+            {
+                Directory.CreateDirectory(pathToCreate);
+                pathToCreate += " - directory succesfully created.";
+            }
+
+            return pathToCreate;
         }
 
         public async Task<IActionResult> ChangeBasePath(HomeCreateVM model)
@@ -196,12 +202,8 @@ namespace WebAppForSolocoProject.Controllers
         public async Task<IActionResult> UpdateConfig(HomeCreateVM model)
         {
             await UpdateModel(model);
-
-            string config = ConfigurationManager.AppSettings["..."].ToString();
-            string[] configList = Utility.SplitCSL(@"\r?\n", config);
-
-            List<string> updateConfig = RewriteConfig(model, configList);
-
+            var appConfigFile = await ManageConfigFile.ParseAppConfigToStringArrayAsync();
+            List<string> updateConfig = RewriteConfig(model, appConfigFile);
             string path = await SaveToFile(updateConfig);
 
             if (path != null)
@@ -211,9 +213,9 @@ namespace WebAppForSolocoProject.Controllers
 
             return View("Create", model);
         }
+
         private List<string> RewriteConfig(HomeCreateVM model, string[] configList)
         {
-            bool isOwnerConfig = false;
             List<string> updateConfig = new List<string>();
 
             foreach (var line in configList)
@@ -223,22 +225,13 @@ namespace WebAppForSolocoProject.Controllers
                     updateConfig.Add(". OwnersEnabled=" + model.SelectedOwnerName);
                     continue;
                 }
-                if (line == ". " + model.SelectedOwnerName || line == ". " + model.SelectedOwner.ChildOwnerOf)
+                if (IsOwnerConfig(line,model))
                 {
-                    isOwnerConfig = true;
-                }
-                if (line == string.Empty)
-                {
-                    isOwnerConfig = false;
-                }
-                if (isOwnerConfig)
-                {
-                    string path = line;
                     foreach (var key in model.SelectedOwner.FolderPathPairs.Keys)
                     {
-                        if (line.Contains(key)&&line.Contains("FTP3rdparty"))
+                        if (line.Contains(key) && line.Contains("FTP3rdparty"))
                         {
-                            path = string.Empty;
+                            string path = string.Empty;
                             int idx = line.IndexOf('=');
                             foreach (var value in model.SelectedOwner.FolderPathPairs.GetValueOrDefault(key))
                             {
@@ -246,10 +239,10 @@ namespace WebAppForSolocoProject.Controllers
                                 path += ";";
                             }
                             path = line.Substring(0, idx + 1) + path.Substring(0, path.Length - 1);
+                            updateConfig.Add(path);
                             break;
                         }
                     }
-                    updateConfig.Add(path);
                 }
                 else
                 {
@@ -257,6 +250,17 @@ namespace WebAppForSolocoProject.Controllers
                 }
             }
             return updateConfig;
+        }
+
+        private bool IsOwnerConfig(string line,HomeCreateVM model)
+        {
+            foreach (var config in model.SelectedOwner.Config)
+            {
+                if (line.Equals(config))
+                    return true;
+            }
+
+            return false;
         }
 
         private async Task<string> SaveToFile(List<string> updateConfig)
@@ -270,7 +274,7 @@ namespace WebAppForSolocoProject.Controllers
 
             if (path != null)
             {
-                System.IO.File.WriteAllLines(path, updateConfig);
+                await System.IO.File.WriteAllLinesAsync(path, updateConfig);
             }
 
             return path;

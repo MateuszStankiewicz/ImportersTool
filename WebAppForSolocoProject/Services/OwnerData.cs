@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
 using WebAppForSolocoProject.Models;
 using WebAppForSolocoProject.Utilities;
-using System.Diagnostics;
+
 
 namespace WebAppForSolocoProject.Services
 {
@@ -23,10 +22,10 @@ namespace WebAppForSolocoProject.Services
         private List<Owner> ReadFromConfig()
         {
             List<Owner> owners = new List<Owner>();
-            string config = ConfigurationManager.AppSettings["..."].ToString();
-            string[] configList = Utility.SplitCSL(@"\r?\n", config);
+            string[] configList = ManageConfigFile.ParseAppSettingsToStringArray();
+
             for (int i = 0; i < configList.Length; i++)
-            {               
+            {
                 if (configList[i].Contains("Importers") && configList[i - 1][2] != '.')
                 {
                     Owner owner = new Owner()
@@ -91,10 +90,11 @@ namespace WebAppForSolocoProject.Services
                         updatedPaths.Add(path);
                         if(path.Contains("SourceFolder"))
                         {
-                            if (path.Contains("SD") && !owner.QualityFolders.Any(q=>q==Quality.SD))
-                                owner.QualityFolders.Add(Quality.SD);
-                            if (path.Contains("HD") && !owner.QualityFolders.Any(q => q == Quality.HD))
-                                owner.QualityFolders.Add(Quality.HD);
+                            foreach (Quality quality in Enum.GetValues(typeof(Quality)))
+                            {
+                                if(path.Contains(quality.ToString()) && !owner.QualityFolders.Any(q=>q==quality))
+                                    owner.QualityFolders.Add(quality);
+                            }
                         }
                     }
                 }
@@ -155,7 +155,8 @@ namespace WebAppForSolocoProject.Services
 
         public enum Quality
         {
-            SD,HD
+            SD,
+            HD
         }
 
     }
