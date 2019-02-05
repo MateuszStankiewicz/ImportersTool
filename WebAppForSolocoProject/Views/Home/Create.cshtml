@@ -3,41 +3,73 @@
     ViewData["Title"] = "Create";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
-<form name="Form" method="post">
-    <br />
-    <div class="form-inline">
-        <label>Base path: </label>
-        <input value="@Model.BasePath" asp-for="BasePath" placeholder="Base path:" class="form-control" />
-        <input asp-action="ChangeBasePath" type="submit" name="button" value="Change Base Path" class="btn btn-info"> <br />
+
+<form style="margin:10px" name="Form" method="post" enctype="multipart/form-data">
+    <div class="form-row">
+        <div class="col-md-3">
+            <label>Base path: </label>
+            <input value="@Model.BasePath" asp-for="BasePath" placeholder="Base path:" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <input asp-action="ChangeBasePath" style="margin-top:32px" id="ChangeBasePath" type="submit" name="button" value="Change Base Path" class="btn btn-info"> <br />
+        </div>
     </div>
     <span asp-validation-for="BasePath" class="text-danger"></span> <br />
-    <div class="form-inline">
-        <label>Owner: </label>
-        <select asp-for="SelectedOwnerName" asp-items="@(new SelectList(Model.OwnersList,"Name","Name"))" onchange="DoPostBack();" class="form-control"></select>
-        <label id="QualityFolder">Quality folder: </label>
-        <select asp-for="SelectedFolder" asp-items="@(new SelectList(Model.FolderList))" class="form-control"></select> <br />
+    <div class="form-row">
+        <div class="form-group col-md-3">
+            <label>Owner: </label>
+            <select asp-for="SelectedOwnerName" asp-items="@(new SelectList(Model.OwnersList,"Name","Name"))" onchange="DoPostBack();" class="form-control"></select>
+        </div>
+        <div class="form-group col-sm-1">
+            <label id="QualityFolder">Quality folder: </label>
+            <select asp-for="SelectedFolder" asp-items="@(new SelectList(Model.FolderList))" class="form-control"></select> 
+        </div>
     </div>
-    <br />
-    <button asp-action="SelectFiles" type="submit" class="btn btn-info">Select Files</button>
-    <button asp-action="UpdateConfig" type="submit" class="btn btn-info">Update Config</button>
-    <input asp-action="Run" type="submit" value="Run" class="btn btn-info" />
+    <div class="form-row">
+        <div class="form-group col-md-3">
+            <label>Starting files: </label>
+            <input asp-for="Files" type="file" multiple class="form-control" style="height:auto" />
+        </div>
+        <div class="col-md-2">
+            <button asp-action="CopyFiles" style="margin-top:34px" id="CopyFiles" type="submit" class="btn btn-info">Copy Files</button> 
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="col-md-3">
+            <button asp-action="UpdateConfig" id="UpdateConfig" type="submit" class="btn btn-info">Update Config</button>
+            <input asp-action="Run" id="Run" type="submit" value="Run" class="btn btn-success" />
+        </div>
+    </div>
 </form>
 
 <br />
 @foreach (var log in Model.Logs)
 {
-    <div>@log</div>
+    <div style="margin-left:10px">@log</div>
 }
 
 <script>
-    if (@Model.FolderList.Count() === 0) {
+    if (@((!Model.SelectedOwner.FolderPathPairs.Keys.Contains("SourceFolder")).ToString().ToLower())) {
+        document.getElementById("Files").disabled = true;
+    }
+    if (@Model.FolderList.Count() <2) {
         let sf = document.getElementById("SelectedFolder");
-        let qf = document.getElementById("QualityFolder");
-        sf.style.display = "none";
-        qf.style.display = "none";
+        sf.disabled = true;
+    }
+    if (@Model.SelectFilesBtnClicked.ToString().ToLower()) {
+        document.getElementById("BasePath").disabled = true;
+        document.getElementById("ChangeBasePath").disabled = true;
+        document.getElementById("SelectedOwnerName").disabled = true;
+        document.getElementById("SelectedFolder").disabled = true;
+        document.getElementById("CopyFiles").disabled = true;
+    }
+    else {
+        document.getElementById("UpdateConfig").disabled = true;
+        document.getElementById("Run").disabled = true;
     }
     function DoPostBack() {
         document.Form.action = "/home/GetFolders";
         document.Form.submit();
     }
+
 </script>
