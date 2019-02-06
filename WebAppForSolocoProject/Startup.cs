@@ -32,7 +32,7 @@ namespace WebAppForSolocoProject
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-            services.AddScoped<OwnerData, OwnerData>();
+            services.AddSingleton<OwnerData, OwnerData>();
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
         }
 
