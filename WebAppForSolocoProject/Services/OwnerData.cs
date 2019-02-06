@@ -39,6 +39,7 @@ namespace WebAppForSolocoProject.Services
                     };
                     owner.Name = configList[i - 1].Substring(2);
                     i++;
+
                     while (!string.IsNullOrWhiteSpace(configList[i])&&!configList[i].Contains("ImageChecker"))
                     {
                         owner.Config.Add(configList[i]);
