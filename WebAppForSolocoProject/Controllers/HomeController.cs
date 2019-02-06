@@ -48,8 +48,15 @@ namespace WebAppForSolocoProject.Controllers
         public async Task<IActionResult> Run(HomeCreateVM model)
         {
             await UpdateModel(model);
-            DeleteAppConfig("app.config");
-            RenameAppConfig("original_app.config", "app.config");
+            if(System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "original_app.config")))
+            {
+                DeleteAppConfig("app.config");
+                RenameAppConfig("original_app.config", "app.config");
+            }
+            else
+            {
+                model.Logs.Add("You need first Updade Config.");
+            }
             return View("Create", model);
         }
 
@@ -61,8 +68,7 @@ namespace WebAppForSolocoProject.Controllers
                 {
                     foreach (var path in model.SelectedOwner.FolderPathPairs.GetValueOrDefault(key))
                     {
-                        string pathToCreate = Path.Combine(model.BasePath, model.SelectedOwnerName, path);
-                        model.Logs.Add(CreateDirectory(pathToCreate));
+                        model.Logs.Add(CreateDirectory(Path.Combine(model.BasePath, model.SelectedOwnerName, path)));
                     }
                 }
             });
@@ -79,15 +85,12 @@ namespace WebAppForSolocoProject.Controllers
         public async Task<IActionResult> ChangeBasePath(HomeCreateVM model)
         {
             await UpdateModel(model);
-
             var path = new TaskCompletionSource<string>();
 
             Thread thread = new Thread(()=>BrowseFolder(path,model));
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
-
             model.BasePath = await path.Task;
-
             return View("Create", model);
         }
 
@@ -110,7 +113,9 @@ namespace WebAppForSolocoProject.Controllers
         {
             await UpdateModel(model);
             if (!model.SelectedOwner.FolderPathPairs.Keys.Contains("SourceFolder"))
+            {
                 model.Logs.Add("Selected owner does not need initialize files. Just click 'Copy Files'.");
+            }
             return View("Create", model);
         }
 
@@ -165,6 +170,7 @@ namespace WebAppForSolocoProject.Controllers
             foreach (IFormFile file in model.Files)
             {
                 var filePath = Path.Combine(model.BasePath, model.SelectedOwnerName, model.PathToSaveFile,file.FileName);
+
                 if (file.Length>0)
                 {
                     using (var stream = new FileStream(filePath, FileMode.Create))
