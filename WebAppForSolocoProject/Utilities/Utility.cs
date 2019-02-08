@@ -16,7 +16,5 @@ namespace WebAppForSolocoProject.Utilities
         }
 
         public const string importerFileExtensions = "Importer Files(*.jpg;*.xml;*.xlsx;*.srt)|*.JPG;*.XML;*.XLSX;*.SRT|All files (*.*)|*.*";
-
-        public const string configFileExtensions = "Config files (*.config)|*.config|All files (*.*)|*.*";
     }
 }

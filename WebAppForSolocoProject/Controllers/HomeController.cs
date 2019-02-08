@@ -26,7 +26,6 @@ namespace WebAppForSolocoProject.Controllers
             this.ownerData = ownerData;
         }
 
-        [HttpGet]
         public async Task<IActionResult> Create()
         {
             var model = new HomeCreateVM()
@@ -48,15 +47,9 @@ namespace WebAppForSolocoProject.Controllers
         public async Task<IActionResult> Run(HomeCreateVM model)
         {
             await UpdateModel(model);
-            if(System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "original_app.config")))
-            {
-                DeleteAppConfig("app.config");
-                RenameAppConfig("original_app.config", "app.config");
-            }
-            else
-            {
-                model.Logs.Add("You need first Updade Config.");
-            }
+            await UpdateConfig(model);
+
+            await ResetAppConfig(model);
             return View("Create", model);
         }
 
@@ -133,8 +126,8 @@ namespace WebAppForSolocoProject.Controllers
                 List<string> sourceFolders = model.SelectedOwner.FolderPathPairs.GetValueOrDefault("SourceFolder");
                 if (sourceFolders == null)
                 {
-                    model.SelectFilesBtnClicked = true;
                     model = await CreateDirectories(model);
+                    model.SelectFilesBtnClicked = true;
                 }
                 else
                 {
@@ -144,8 +137,8 @@ namespace WebAppForSolocoProject.Controllers
 
                     if (model.Files != null)
                     {
-                        model.SelectFilesBtnClicked = true;
                         model = await CreateDirectories(model);
+                        model.SelectFilesBtnClicked = true;
                         await CopySelectdFiles(model);
                     }
                     else
@@ -197,19 +190,15 @@ namespace WebAppForSolocoProject.Controllers
             });
         }
 
-        public async Task<IActionResult> UpdateConfig(HomeCreateVM model)
+        public async Task<HomeCreateVM> UpdateConfig(HomeCreateVM model)
         {
-            await UpdateModel(model);
-
             var appConfigFile = await ManageConfigFile.ParseAppConfigToStringArrayAsync();
             var updateConfig = RewriteConfig(model, appConfigFile);
-            RenameAppConfig("app.config", "original_app.config");
             await SaveUpdatedAppConfig(updateConfig);
             model.Logs.Add("Config succesfully updated.");
-            model.SelectFilesBtnClicked = true;
             ownerData.SelectedFolder = null;
 
-            return View("Create", model);
+            return model;
         }
 
         private async Task SaveUpdatedAppConfig(List<string> updateConfig)
@@ -217,9 +206,17 @@ namespace WebAppForSolocoProject.Controllers
             await System.IO.File.WriteAllLinesAsync(Path.Combine(Directory.GetCurrentDirectory(), "app.config"), updateConfig);
         }
 
-        private void RenameAppConfig(string oldName, string newName)
+        public async Task<IActionResult> ResetAppConfig(HomeCreateVM model)
         {
-            System.IO.File.Move(Path.Combine(Directory.GetCurrentDirectory(), oldName), Path.Combine(Directory.GetCurrentDirectory(), newName));
+            await UpdateModel(model);
+            await Task.Run(() =>
+            {
+                DeleteAppConfig("app.config");
+                System.IO.File.Copy(Path.Combine(Directory.GetCurrentDirectory(), "original_app.config"), Path.Combine(Directory.GetCurrentDirectory(), "app.config"));
+                model.Logs.Add("Config has been reset.");
+            });
+
+            return View("Create",model);
         }
 
         private void DeleteAppConfig(string fileName)
